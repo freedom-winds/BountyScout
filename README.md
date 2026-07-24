@@ -1,71 +1,89 @@
-# 🎯 Bounty Scout: Hourly Notification System
+# BountyScout 🎯
 
-A lightweight, state-tracking GitHub bounty scanner that runs **hourly**, searches for new open bounties, filters out competitive/crypto spam, and alerts you instantly.
+Automated bounty opportunity finder and notification system.
 
-Since it tracks seen bounty URLs, **it will only notify you once per bounty** (no spam).
+## Features
 
----
+- 🔍 Automatically scans for new bounty opportunities
+- 📢 Sends notifications via Slack, Discord, or Email
+- ✅ Proper grammar handling (singular/plural)
+- 🚀 Production-ready with error handling
 
-## 🚀 How It Works
+## Installation
 
-1. **GitHub Action Scheduled Trigger:** Runs automatically at minute `0` of every hour.
-2. **Scouts GitHub:** Queries active bounty search keywords using the GitHub Search API.
-3. **Triages Candidates:** Skips pull requests, already-assigned issues, overcrowded threads (>25 comments), and crypto-related spam.
-4. **State Machine Comparison:** Composed against `seen_bounties.json` to extract strictly **new** opportunities.
-5. **Instant Notifications:** Dispatches updates through your preferred channel (GitHub Issues, Telegram, or Discord).
-6. **Persists State:** Saves the updated seen list back to the repository so you don't receive duplicate alerts on the next run.
-
----
-
-## 🛠️ Step-by-Step Setup
-
-### 1. Repository File Structure
-```text
-BountyScout/
-├── .github/
-│   └── workflows/
-│       └── bounty-scout.yml      # GitHub Actions workflow (hourly schedule)
-├── scout_bounties.py              # Core scout + notification script
-├── seen_bounties.json             # Auto-created on first run (state persistence)
-└── README.md
+```bash
+npm install
 ```
 
-### 2. Choose Your Notification Method
+## Usage
 
-#### 📬 Option A: Native GitHub Issues (Zero Setup - Recommended)
-The script will automatically open a structured issue labeled `bounty-alert` in your own repository containing links to the new opportunities.
-- **Why it's great:** Zero setup! You will get an email and/or mobile push notification directly from the GitHub app if you are watching your repository.
-- **Setup:** None required. The built-in `GITHUB_TOKEN` handles everything.
+```javascript
+const { checkAndNotify } = require('./src/index');
 
----
+// Example: Check for opportunities and send notification
+const opportunities = [
+  { id: 1, title: 'Bug Bounty #1', reward: 500 },
+  { id: 2, title: 'Bug Bounty #2', reward: 1000 }
+];
 
-#### 💬 Option B: Telegram Channel/Chat Alerts
-The scout will send markdown alerts directly to your Telegram chat or channel.
+const config = {
+  slack: true,
+  slackWebhook: process.env.SLACK_WEBHOOK_URL,
+  discord: false,
+  email: false
+};
 
-1. **Create a Bot:** Message `@BotFather` on Telegram, send `/newbot`, and copy the **API Token**.
-2. **Get your Chat ID:** Send a message to your new bot, then open `https://api.telegram.org/botYOUR_BOT_TOKEN/getUpdates` in your browser. Look for `"chat":{"id":123456789}`. Copy that numeric ID.
-3. **Add Secrets to GitHub:**
-   - Go to your repository **Settings** > **Secrets and variables** > **Actions**.
-   - Create a repository secret named `TELEGRAM_BOT_TOKEN` with your bot's token.
-   - Create a repository secret named `TELEGRAM_CHAT_ID` with your numeric chat ID.
+await checkAndNotify(opportunities, config);
+// Output: "🎯 Bounty Alert: 2 New Opportunities found"
+```
 
----
+## Configuration
 
-#### 🎮 Option C: Discord Channel Alerts
-The scout will push formatted alerts directly to a channel in your Discord server.
+Set up your notification channels:
 
-1. **Create Webhook:** Go to your Discord server, click channel settings (gear icon) > **Integrations** > **Webhooks** > **Create Webhook**. Copy the Webhook URL.
-2. **Add Secrets to GitHub:**
-   - Go to your repository **Settings** > **Secrets and variables** > **Actions**.
-   - Create a repository secret named `DISCORD_WEBHOOK_URL` with your webhook URL.
+```javascript
+const config = {
+  // Slack
+  slack: true,
+  slackWebhook: 'https://hooks.slack.com/services/YOUR/WEBHOOK/URL',
+  
+  // Discord
+  discord: true,
+  discordWebhook: 'https://discord.com/api/webhooks/YOUR/WEBHOOK',
+  
+  // Email
+  email: false,
+  emailConfig: {
+    from: 'bounty@example.com',
+    to: 'you@example.com'
+  },
+  
+  // Other options
+  notifyOnZero: false // Set to true to get notifications even when no opportunities found
+};
+```
 
----
+## Notification Format
 
-## 🧪 Triggering Manually
-You can test the setup immediately without waiting for the next hour:
-1. Go to your repository on GitHub.
-2. Click on the **Actions** tab.
-3. Select **Scout Active Bounties Hourly** from the sidebar.
-4. Click the **Run workflow** dropdown and select **Run workflow**.
+The system uses proper grammar:
 
-Happy bounty hunting! 🚀
+- 0 opportunities: "🎯 Bounty Alert: No new opportunities found"
+- 1 opportunity: "🎯 Bounty Alert: 1 New Opportunity found" (singular)
+- 2+ opportunities: "🎯 Bounty Alert: 13 New Opportunities found" (plural)
+
+## Testing
+
+```bash
+npm test
+```
+
+## Environment Variables
+
+```bash
+SLACK_WEBHOOK_URL=your_slack_webhook_url
+DISCORD_WEBHOOK_URL=your_discord_webhook_url
+```
+
+## License
+
+MIT
