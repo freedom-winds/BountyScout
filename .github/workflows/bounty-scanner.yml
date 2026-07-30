@@ -1,0 +1,123 @@
+name: Bounty Scanner
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: |
+          npm install @octokit/rest@20.0.2
+
+      - name: Scan for bounties
+        id: scan
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const repos = [
+              'solanabr/superteam-academy',
+              'Jagadeeshftw/grainlify',
+              'StellarRoute/StellarRoute'
+            ];
+            
+            const labels = ['bounty', 'good first issue', 'help wanted'];
+            const results = [];
+            
+            for (const repo of repos) {
+              const [owner, repoName] = repo.split('/');
+              
+              try {
+                for (const label of labels) {
+                  const { data: issues } = await github.rest.issues.listForRepo({
+                    owner,
+                    repo: repoName,
+                    labels: label,
+                    state: 'open',
+                    per_page: 10,
+                    sort: 'updated',
+                    direction: 'desc'
+                  });
+                  
+                  for (const issue of issues) {
+                    if (!results.find(r => r.url === issue.html_url)) {
+                      results.push({
+                        title: issue.title,
+                        repo: repo,
+                        url: issue.html_url,
+                        comments: issue.comments,
+                        updated: issue.updated_at,
+                        labels: issue.labels.map(l => l.name)
+                      });
+                    }
+                  }
+                }
+              } catch (error) {
+                console.log(`Error scanning ${repo}: ${error.message}`);
+              }
+            }
+            
+            results.sort((a, b) => new Date(b.updated) - new Date(a.updated));
+            const topResults = results.slice(0, 15);
+            
+            if (topResults.length === 0) {
+              console.log('No bounties found');
+              return;
+            }
+            
+            const now = new Date().toISOString().replace('T', ' ').substring(0, 16);
+            let body = `### Active Bounty Scan Results\n\n**Scan Time:** ${now} UTC\n\n`;
+            
+            topResults.forEach((result, index) => {
+              body += `#### ${index + 1}. [${result.title}](${result.url})\n`;
+              body += `- **Repository:** [${result.repo}](https://github.com/${result.repo})\n`;
+              body += `- **Labels:** ${result.labels.join(', ')}\n`;
+              body += `- **Comments:** ${result.comments}\n`;
+              body += `- **Last Updated:** ${result.updated}\n\n`;
+            });
+            
+            const issueTitle = `🎯 Bounty Alert: ${topResults.length} New Opportunities Found`;
+            
+            const { data: existingIssues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'bounty-scan',
+              per_page: 5
+            });
+            
+            if (existingIssues.length > 0) {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existingIssues[0].number,
+                title: issueTitle,
+                body: body
+              });
+              console.log(`Updated issue #${existingIssues[0].number}`);
+            } else {
+              const { data: newIssue } = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: issueTitle,
+                body: body,
+                labels: ['bounty-scan', 'automated']
+              });
+              console.log(`Created issue #${newIssue.number}`);
+            }
