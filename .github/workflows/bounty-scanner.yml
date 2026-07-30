@@ -1,0 +1,43 @@
+name: Bounty Scanner
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Scan for bounties
+        id: scan
+        run: |
+          RESULTS=$(curl -s "https://api.github.com/search/issues?q=label:bounty+state:open+sort:updated-desc&per_page=9" \
+            -H "Accept: application/vnd.github.v3+json" | \
+            jq -r '.items[] | "- [\(.title)](\(.html_url)) - \(.repository_url | sub("https://api.github.com/repos/"; ""))"')
+          
+          echo "results<<EOF" >> $GITHUB_OUTPUT
+          echo "$RESULTS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      
+      - name: Check for existing issue
+        id: check
+        run: |
+          ISSUE_NUM=$(gh issue list --label "bounty-alert" --state open --json number --jq '.[0].number')
+          echo "issue_number=$ISSUE_NUM" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ github.token }}
+      
+      - name: Update or create issue
+        run: |
+          BODY="### Active Bounty Scan Results\n\n**Scan Time:** $(date -u +%Y-%m-%dT%H:%M:%SZ)\n\n${{ steps.scan.outputs.results }}\n\n---\n*Automated scan - Updates every 6 hours*"
+          
+          if [ -n "${{ steps.check.outputs.issue_number }}" ]; then
+            gh issue edit ${{ steps.check.outputs.issue_number }} --body "$BODY"
+          else
+            gh issue create --title "🎯 Active Bounty Opportunities" --body "$BODY" --label "bounty-alert"
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
