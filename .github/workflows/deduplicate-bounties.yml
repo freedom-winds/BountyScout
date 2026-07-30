@@ -1,0 +1,53 @@
+name: Deduplicate Bounty Issues
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  deduplicate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Close duplicate bounty alerts
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100
+            });
+            
+            const bountyAlerts = issues.filter(issue => 
+              issue.title.includes('Bounty Alert:') && 
+              issue.title.includes('New Opportunit')
+            );
+            
+            if (bountyAlerts.length <= 1) {
+              core.info('No duplicates found');
+              return;
+            }
+            
+            bountyAlerts.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            const [latest, ...duplicates] = bountyAlerts;
+            
+            core.info(`Keeping issue #${latest.number}, closing ${duplicates.length} duplicates`);
+            
+            for (const duplicate of duplicates) {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: duplicate.number,
+                state: 'closed',
+                labels: ['duplicate']
+              });
+              
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: duplicate.number,
+                body: `🤖 Auto-closed: Duplicate of #${latest.number}`
+              });
+            }
