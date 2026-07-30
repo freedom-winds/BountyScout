@@ -1,0 +1,84 @@
+name: Bounty Scanner
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: read
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: |
+          npm install @octokit/rest
+
+      - name: Scan for bounties
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const query = 'bounty OR "bug bounty" in:title,body is:issue is:open created:>=' + 
+              new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+            
+            const results = await github.rest.search.issuesAndPullRequests({
+              q: query,
+              sort: 'updated',
+              order: 'desc',
+              per_page: 10
+            });
+
+            if (results.data.items.length === 0) {
+              console.log('No new bounty opportunities found');
+              return;
+            }
+
+            const timestamp = new Date().toISOString().replace('T', ' ').split('.')[0] + ' UTC';
+            let body = `### Active Bounty Scan Results\n\n**Scan Time:** ${timestamp}\n\n`;
+            
+            results.data.items.slice(0, 6).forEach((item, index) => {
+              const repoName = item.repository_url.replace('https://api.github.com/repos/', '');
+              body += `#### ${index + 1}. [${item.title}](${item.html_url})\n`;
+              body += `- **Repository:** [${repoName}](https://github.com/${repoName})\n`;
+              body += `- **Comments:** ${item.comments}\n`;
+              body += `- **Last Updated:** ${item.updated_at}\n\n`;
+            });
+
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              labels: 'bounty-alert',
+              state: 'open',
+              per_page: 1
+            });
+
+            if (issues.data.length > 0) {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issues.data[0].number,
+                body: body
+              });
+              console.log(`Updated issue #${issues.data[0].number}`);
+            } else {
+              const newIssue = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `🎯 Bounty Alert: ${results.data.items.length} New Opportunities Found`,
+                body: body,
+                labels: ['bounty-alert', 'automated']
+              });
+              console.log(`Created issue #${newIssue.data.number}`);
+            }
