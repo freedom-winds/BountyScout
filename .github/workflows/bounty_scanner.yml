@@ -1,0 +1,79 @@
+name: Bounty Scanner
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Scan for bounties
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const query = `
+              query($searchQuery: String!) {
+                search(query: $searchQuery, type: ISSUE, first: 20) {
+                  edges {
+                    node {
+                      ... on Issue {
+                        title
+                        url
+                        repository {
+                          nameWithOwner
+                          url
+                        }
+                        comments {
+                          totalCount
+                        }
+                        updatedAt
+                        state
+                      }
+                    }
+                  }
+                }
+              }
+            `;
+            
+            const searchQuery = 'label:bounty is:open is:issue sort:updated-desc';
+            
+            const result = await github.graphql(query, {
+              searchQuery: searchQuery
+            });
+            
+            const issues = result.search.edges
+              .map(edge => edge.node)
+              .filter(issue => issue.state === 'OPEN')
+              .slice(0, 8);
+            
+            if (issues.length === 0) {
+              console.log('No new bounty opportunities found');
+              return;
+            }
+            
+            const timestamp = new Date().toISOString().replace(/\..+/, 'Z');
+            const formattedDate = new Date().toISOString().split('T')[0];
+            
+            let body = `### Active Bounty Scan Results\n\n`;
+            body += `**Scan Time:** ${timestamp}\n\n`;
+            
+            issues.forEach((issue, index) => {
+              body += `#### ${index + 1}. [${issue.title}](${issue.url})\n`;
+              body += `- **Repository:** [${issue.repository.nameWithOwner}](${issue.repository.url})\n`;
+              body += `- **Comments:** ${issue.comments.totalCount}\n`;
+              body += `- **Last Updated:** ${issue.updatedAt}\n\n`;
+            });
+            
+            const title = `🎯 Bounty Alert: ${issues.length} New ${issues.length === 1 ? 'Opportunity' : 'Opportunities'} found`;
+            
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: title,
+              body: body,
+              labels: ['bounty-scan', 'automated']
+            });
