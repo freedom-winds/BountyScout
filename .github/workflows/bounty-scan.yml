@@ -1,0 +1,99 @@
+name: Bounty Scan
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      
+      - name: Install dependencies
+        run: npm install @octokit/rest
+      
+      - name: Run bounty scan
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          node << 'EOF'
+          const { Octokit } = require('@octokit/rest');
+          const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
+          
+          const keywords = [
+            'bounty', 'bug bounty', 'security bounty',
+            'reward', 'prize', 'hackathon',
+            'good first issue', 'help wanted'
+          ];
+          
+          async function scan() {
+            const results = [];
+            const seenUrls = new Set();
+            
+            for (const keyword of keywords) {
+              try {
+                const { data } = await octokit.search.issuesAndPullRequests({
+                  q: `${keyword} is:issue is:open created:>=${new Date(Date.now() - 7*24*60*60*1000).toISOString().split('T')[0]}`,
+                  sort: 'updated',
+                  order: 'desc',
+                  per_page: 20
+                });
+                
+                for (const issue of data.items) {
+                  if (!seenUrls.has(issue.html_url) && !issue.pull_request) {
+                    seenUrls.add(issue.html_url);
+                    results.push({
+                      title: issue.title,
+                      url: issue.html_url,
+                      repo: issue.repository_url.replace('https://api.github.com/repos/', ''),
+                      comments: issue.comments,
+                      updated: issue.updated_at
+                    });
+                  }
+                }
+                
+                await new Promise(resolve => setTimeout(resolve, 2000));
+              } catch (error) {
+                console.error(`Error searching for ${keyword}:`, error.message);
+              }
+            }
+            
+            return results.slice(0, 10);
+          }
+          
+          scan().then(results => {
+            if (results.length === 0) {
+              console.log('No new opportunities found');
+              return;
+            }
+            
+            let body = `### Active Bounty Scan Results\n\n**Scan Time:** ${new Date().toISOString().replace('T', ' ').split('.')[0]} UTC\n\n`;
+            
+            results.forEach((item, idx) => {
+              body += `#### ${idx + 1}. [${item.title}](${item.url})\n`;
+              body += `- **Repository:** [${item.repo}](https://github.com/${item.repo})\n`;
+              body += `- **Comments:** ${item.comments}\n`;
+              body += `- **Last Updated:** ${item.updated}\n\n`;
+            });
+            
+            return octokit.issues.create({
+              owner: process.env.GITHUB_REPOSITORY.split('/')[0],
+              repo: process.env.GITHUB_REPOSITORY.split('/')[1],
+              title: `🎯 Bounty Alert: ${results.length} New Opportunities Found`,
+              body: body,
+              labels: ['bounty-scan', 'automated']
+            });
+          }).then(() => {
+            console.log('Scan complete and issue created');
+          }).catch(error => {
+            console.error('Fatal error:', error);
+            process.exit(1);
+          });
+          EOF
