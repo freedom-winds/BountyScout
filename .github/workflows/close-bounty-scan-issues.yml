@@ -1,0 +1,55 @@
+name: Close Bounty Scan Issues
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Run daily at midnight UTC
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  close-old-scans:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Close old bounty scan issues
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            
+            // Get all open issues with the bounty scan title pattern
+            const issues = await github.rest.issues.listForRepo({
+              owner,
+              repo,
+              state: 'open',
+              per_page: 100
+            });
+            
+            const bountyPattern = /🎯 Bounty Alert:|Active Bounty Scan Results/i;
+            const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+            
+            for (const issue of issues.data) {
+              if (bountyPattern.test(issue.title) || bountyPattern.test(issue.body || '')) {
+                const createdAt = new Date(issue.created_at);
+                
+                // Close if older than 24 hours
+                if (createdAt < oneDayAgo) {
+                  await github.rest.issues.update({
+                    owner,
+                    repo,
+                    issue_number: issue.number,
+                    state: 'closed'
+                  });
+                  
+                  await github.rest.issues.createComment({
+                    owner,
+                    repo,
+                    issue_number: issue.number,
+                    body: 'Automatically closing old bounty scan report. New scans are posted regularly.'
+                  });
+                  
+                  console.log(`Closed issue #${issue.number}: ${issue.title}`);
+                }
+              }
+            }
