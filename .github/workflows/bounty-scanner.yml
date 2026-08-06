@@ -1,0 +1,20 @@
+name: Bounty Scanner
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'  # Every 6 hours
+  workflow_dispatch:
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Scan and report
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Existing bounty scanner logic would go here
+            // This is a placeholder showing where the scan job would be defined
+            console.log('Bounty scan completed');
