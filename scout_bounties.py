@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 
 # Configuration
 STATE_FILE = "seen_bounties.json"
-MAX_COMMENTS = 25 # Filter out overcrowded threads
+MAX_COMMENTS = 25  # Filter out overcrowded threads
 
 # GitHub search queries for active bounty opportunities
 SEARCH_QUERIES = [
@@ -17,11 +17,11 @@ SEARCH_QUERIES = [
     'is:issue is:open "Opire" bounty sort:updated-desc',
 ]
 
-def load_seen_bounties():
+def load_seen_bounties(state_file=STATE_FILE):
     """Load previously seen bounty URLs from the state file."""
-    if os.path.exists(STATE_FILE):
+    if os.path.exists(state_file):
         try:
-            with open(STATE_FILE, "r", encoding="utf-8") as f:
+            with open(state_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 if isinstance(data, list):
                     return set(data)
@@ -29,11 +29,11 @@ def load_seen_bounties():
             print(f"Error loading state file: {e}")
     return set()
 
-def save_seen_bounties(seen_urls):
+def save_seen_bounties(seen_urls, state_file=STATE_FILE):
     """Save the updated list of seen bounty URLs."""
     try:
-        with open(STATE_FILE, "w", encoding="utf-8") as f:
-            json.dump(list(seen_urls), f, indent=2)
+        with open(state_file, "w", encoding="utf-8") as f:
+            json.dump(sorted(list(seen_urls)), f, indent=2)
     except Exception as e:
         print(f"Error saving state file: {e}")
 
@@ -56,30 +56,106 @@ def search_github(query, token=None):
         print(f"GitHub Search API Error for query '{query}': {e}")
         return {}
 
-def is_clean_candidate(item):
-    """Triage logic to filter out noisy, assigned, closed, or spam tasks."""
+def is_clean_candidate(item, current_repo=None):
+    """Triage logic to filter out noisy, assigned, closed, recursive alerts, or spam tasks."""
     # 1. Skip if already a Pull Request
     if "pull_request" in item:
         return False
-    # 2. Skip if already assigned
-    if item.get("assignees"):
+    # 2. Skip if closed or locked
+    if item.get("state") and str(item.get("state")).lower() != "open":
         return False
-    # 3. Skip if thread is overcrowded (highly competitive)
+    if item.get("locked") is True:
+        return False
+    # 3. Skip if already assigned
+    if item.get("assignees") or item.get("assignee"):
+        return False
+    # 4. Skip if thread is overcrowded (highly competitive)
     if int(item.get("comments", 0)) > MAX_COMMENTS:
         return False
     
-    title = str(item.get("title", "")).lower()
-    body = str(item.get("body", "")).lower()
+    # 5. Extract repository name and filter self/BountyScout repositories
+    url = item.get("html_url", "")
+    repo = ""
+    if "/issues/" in url:
+        repo = url.split("/issues/")[0].replace("https://github.com/", "").strip("/")
+    elif item.get("repository_url"):
+        repo = item.get("repository_url", "").replace("https://api.github.com/repos/", "").strip("/")
+
+    if current_repo and repo and repo.lower() == current_repo.lower():
+        return False
+    if repo and (repo.lower().endswith("/bountyscout") or repo.lower().endswith("/bounty-scout") or repo.lower() == "bountyscout"):
+        return False
+
+    title = str(item.get("title", "")).strip()
+    body = str(item.get("body", "")).strip()
     
-    # 4. Skip cryptocurrency/article writing/spam keywords
+    # 6. Filter recursive alerts and alert summary titles
+    if re.search(r'(?:^|[\s🎯])bounty\s+alert\s*:', title, re.IGNORECASE):
+        return False
+
+    title_lower = title.lower()
+    body_lower = body.lower()
+
+    # 7. Skip cryptocurrency spam / referral / writing tasks
     blocklist = [
         "airdrop", "referral", "casino", "gambling", "trading bot", 
-        "blog post", "article writing", "tutorial proposal", "content creator"
+        "blog post", "article writing", "tutorial proposal", "content creator",
+        "faucet", "giveaway", "retweet", "survey", "quiz", "ambassador"
     ]
-    if any(term in title or term in body for term in blocklist):
+    if any(term in title_lower or term in body_lower for term in blocklist):
         return False
         
     return True
+
+def get_opportunity_word(count, capitalize=False):
+    """Return grammatically correct singular or plural form of opportunity."""
+    if count == 1:
+        return "Opportunity" if capitalize else "opportunity"
+    return "Opportunities" if capitalize else "opportunities"
+
+def get_opportunity_text(count: int, title_case: bool = False) -> str:
+    """Return grammatically correct singular or plural form for opportunity."""
+    return get_opportunity_word(count, capitalize=title_case)
+
+def format_notification_message(new_bounties, now_str):
+    """Format Telegram / Discord markdown notification."""
+    opportunity_word = get_opportunity_word(len(new_bounties), capitalize=False)
+    notif_lines = [
+        f"🎯 *New Bounty Alert* ({now_str})",
+        f"Found {len(new_bounties)} new {opportunity_word}:\n"
+    ]
+    for idx, b in enumerate(new_bounties, start=1):
+        notif_lines.append(f"{idx}. *{b['title']}*")
+        notif_lines.append(f"   • Repository: `{b['repo']}`")
+        notif_lines.append(f"   • Comments: {b['comments']}")
+        notif_lines.append(f"   • Link: {b['url']}\n")
+    
+    return "\n".join(notif_lines)
+
+def build_notification_markdown(new_bounties, now_str):
+    """Alias helper for format_notification_message."""
+    return format_notification_message(new_bounties, now_str)
+
+def format_github_issue_content(new_bounties, now_str):
+    """Format GitHub Issue title and body with correct pluralization."""
+    opportunity_word = get_opportunity_word(len(new_bounties), capitalize=True)
+    issue_title = f"🎯 Bounty Alert: {len(new_bounties)} New {opportunity_word} found"
+    issue_body = (
+        f"### Active Bounty Scan Results\n\n"
+        f"**Scan Time:** {now_str}\n\n"
+    )
+    for idx, b in enumerate(new_bounties, start=1):
+        issue_body += (
+            f"#### {idx}. [{b['title']}]({b['url']})\n"
+            f"- **Repository:** [{b['repo']}](https://github.com/{b['repo']})\n"
+            f"- **Comments:** {b['comments']}\n"
+            f"- **Last Updated:** {b.get('updated_at', 'N/A')}\n\n"
+        )
+    return issue_title, issue_body
+
+def build_github_issue_payload(new_bounties, now_str):
+    """Alias helper for format_github_issue_content."""
+    return format_github_issue_content(new_bounties, now_str)
 
 def send_telegram_notification(token, chat_id, message):
     """Send a notification message via Telegram Bot API."""
@@ -148,7 +224,7 @@ def create_github_issue(repo_fullname, token, title, body):
 def main():
     # Load credentials/secrets from environment variables
     github_token = os.environ.get("GITHUB_TOKEN")
-    repo_fullname = os.environ.get("GITHUB_REPOSITORY") # e.g. "username/my-bounty-tracker"
+    repo_fullname = os.environ.get("GITHUB_REPOSITORY")  # e.g. "username/my-bounty-tracker"
     
     telegram_token = os.environ.get("TELEGRAM_BOT_TOKEN")
     telegram_chat_id = os.environ.get("TELEGRAM_CHAT_ID")
@@ -165,7 +241,7 @@ def main():
         for item in results.get("items", []):
             url = item.get("html_url")
             if url and url not in seen_urls:
-                if is_clean_candidate(item):
+                if is_clean_candidate(item, current_repo=repo_fullname):
                     new_bounties.append({
                         "title": item.get("title"),
                         "url": url,
@@ -184,18 +260,7 @@ def main():
     # Format notification message
     now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     
-    # 1. Telegram / Discord Message Format (Markdown)
-    notif_lines = [
-        f"🎯 *New Bounty Alert* ({now_str})",
-        f"Found {len(new_bounties)} new opportunity{'ies' if len(new_bounties) > 1 else ''}:\n"
-    ]
-    for idx, b in enumerate(new_bounties, start=1):
-        notif_lines.append(f"{idx}. *{b['title']}*")
-        notif_lines.append(f"   • Repository: `{b['repo']}`")
-        notif_lines.append(f"   • Comments: {b['comments']}")
-        notif_lines.append(f"   • Link: {b['url']}\n")
-    
-    notification_msg = "\n".join(notif_lines)
+    notification_msg = format_notification_message(new_bounties, now_str)
 
     # Trigger configured notifications
     
@@ -211,18 +276,7 @@ def main():
 
     # Method C: GitHub Issue (Built-in, zero configuration)
     if github_token and repo_fullname:
-        issue_title = f"🎯 Bounty Alert: {len(new_bounties)} New Opportunity{'ies' if len(new_bounties) > 1 else ''} found"
-        issue_body = (
-            f"### Active Bounty Scan Results\n\n"
-            f"**Scan Time:** {now_str}\n\n"
-        )
-        for idx, b in enumerate(new_bounties, start=1):
-            issue_body += (
-                f"#### {idx}. [{b['title']}]({b['url']})\n"
-                f"- **Repository:** [{b['repo']}](https://github.com/{b['repo']})\n"
-                f"- **Comments:** {b['comments']}\n"
-                f"- **Last Updated:** {b['updated_at']}\n\n"
-            )
+        issue_title, issue_body = format_github_issue_content(new_bounties, now_str)
         create_github_issue(repo_fullname, github_token, issue_title, issue_body)
 
     # Save state to prevent duplicate notifications
