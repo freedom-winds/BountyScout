@@ -1,0 +1,39 @@
+name: Filter Valid Bounties
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  filter:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check if issue is self-referential bounty alert
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const title = issue.title;
+            const body = issue.body || '';
+            
+            const isBountyAlert = title.includes('Bounty Alert:') && title.includes('New Opportunit');
+            const hasSelfReference = body.includes(context.repo.owner + '/' + context.repo.repo);
+            
+            if (isBountyAlert && hasSelfReference) {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                state: 'closed',
+                labels: ['invalid', 'self-referential']
+              });
+              
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: '🤖 Auto-closed: This bounty alert references itself, creating a recursive loop. Self-referential bounty alerts are filtered out to prevent infinite scanning cycles.'
+              });
+              
+              core.info('Closed self-referential bounty alert issue #' + issue.number);
+            }
