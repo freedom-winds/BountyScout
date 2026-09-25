@@ -1,0 +1,18 @@
+# List of repositories to monitor for bounty opportunities
+# Format: owner/repository
+repositories:
+  - Grainlify/grainlify-bounty-agent
+  - Zenith-options/contracts
+  - ankitsingh015/HuntMCP
+  - BasedHardware/omi
+  - azerothcore/azerothcore-wotlk
+
+# Bounty-specific keywords to filter issues
+bounty_keywords:
+  - bounty
+  - proposal
+  - fix
+  - high
+  - documentation
+  - reward
+  - incentive
