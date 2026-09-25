@@ -1,0 +1,34 @@
+# BountyScout Scanner Configuration
+
+# GitHub API Configuration
+GITHUB_TOKEN: "ghp_your_github_token_here"  # Replace with actual token
+RATE_LIMIT_DELAY: 60  # Seconds between API calls to avoid rate limits
+
+# Target Repositories (can be extended dynamically)
+TARGET_REPOS:
+  - "NSPG13/agent-bounties"
+  - "BasedHardware/omi"
+  - "SecureBananaLabs/bug-bounty"
+  - "simondalmasso/ATM-Agent-Teller-Machine"
+  - "OmniBlocks/bountyfarmer"
+  - "brockventures/market-sandbox"
+  - "Dogebooch/OSRSheim"
+  - "ProYield-fi/pro-yield-fi"
+  - "nymrel/nymrel-swarm-studio"
+
+# Priority Keywords (case-insensitive)
+PRIORITY_KEYWORDS:
+  - "audit"
+  - "security"
+  - "bounty"
+  - "funded"
+  - "high severity"
+  - "critical"
+  - "emergency"
+  - "$"
+
+# Bounty Amount Thresholds (USD)
+BOUNTY_THRESHOLDS:
+  small: 100
+  medium: 1000
+  large: 10000
