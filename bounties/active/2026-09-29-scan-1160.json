@@ -1,0 +1,86 @@
+{
+  "scanTime": "2026-09-29 17:38 UTC",
+  "issueId": 1160,
+  "bounties": [
+    {
+      "id": 1247,
+      "title": "[BOUNTY] Suggestion #1247",
+      "repository": "SPLURT-Station/S.P.L.U.R.T-tg",
+      "url": "https://github.com/SPLURT-Station/S.P.L.U.R.T-tg/issues/1261",
+      "comments": 0,
+      "lastUpdated": "2026-09-29T17:35:20Z"
+    },
+    {
+      "id": 19820,
+      "title": "[Bounty proposal] fix(backend): validate inputs, clamp boundaries, and add resilience guards in database import jobs ($50 proposed)",
+      "repository": "BasedHardware/omi",
+      "url": "https://github.com/BasedHardware/omi/issues/19820",
+      "comments": 0,
+      "lastUpdated": "2026-09-29T17:31:25Z"
+    },
+    {
+      "id": 19817,
+      "title": "[Bounty proposal] fix(backend): validate inputs and add resilience guards in database mcp api key",
+      "repository": "BasedHardware/omi",
+      "url": "https://github.com/BasedHardware/omi/issues/19817",
+      "comments": 0,
+      "lastUpdated": "2026-09-29T17:28:09Z"
+    },
+    {
+      "id": 175,
+      "title": "mongoose-5.13.14.tgz: 8 vulnerabilities (highest severity is: 10.0) [master] (reachable)",
+      "repository": "amaybaum-prod/V-Achilles",
+      "url": "https://github.com/amaybaum-prod/V-Achilles/issues/175",
+      "comments": 2,
+      "lastUpdated": "2026-09-29T17:23:29Z"
+    },
+    {
+      "id": 19795,
+      "title": "[Bounty proposal] fix(backend): validate inputs and add resilience guards in database app review config ($50 proposed)",
+      "repository": "BasedHardware/omi",
+      "url": "https://github.com/BasedHardware/omi/issues/19795",
+      "comments": 0,
+      "lastUpdated": "2026-09-29T16:48:20Z"
+    },
+    {
+      "id": 17,
+      "title": "Get git-veil itself security-reviewed before we invite scrutiny-by-disclosure",
+      "repository": "prompt-cult/git-veil",
+      "url": "https://github.com/prompt-cult/git-veil/issues/17",
+      "comments": 1,
+      "lastUpdated": "2026-09-29T17:18:58Z"
+    },
+    {
+      "id": 18847,
+      "title": "[Bounty proposal] fix(backend/memory_use): sanitize value error and firestore conflict reflections to prevent internal detail leaks ($50 proposed)",
+      "repository": "BasedHardware/omi",
+      "url": "https://github.com/BasedHardware/omi/issues/18847",
+      "comments": 9,
+      "lastUpdated": "2026-09-29T17:04:23Z"
+    },
+    {
+      "id": 18850,
+      "title": "[Bounty proposal] fix(backend/static_map): sanitize coordinate parsing and provider error reflections ($50 proposed)",
+      "repository": "BasedHardware/omi",
+      "url": "https://github.com/BasedHardware/omi/issues/18850",
+      "comments": 3,
+      "lastUpdated": "2026-09-29T17:04:19Z"
+    },
+    {
+      "id": 18857,
+      "title": "[Bounty proposal] fix(backend/action_items): sanitize task relationship conflict error reflections ($50 proposed)",
+      "repository": "BasedHardware/omi",
+      "url": "https://github.com/BasedHardware/omi/issues/18857",
+      "comments": 0,
+      "lastUpdated": "2026-09-29T17:04:17Z"
+    },
+    {
+      "id": 18864,
+      "title": "[Bounty proposal] docs(cli): memories -> PostgreSQL export recipe ($25 proposed)",
+      "repository": "BasedHardware/omi",
+      "url": "https://github.com/BasedHardware/omi/issues/18864",
+      "comments": 0,
+      "lastUpdated": "2026-09-29T17:00:00Z"
+    }
+  ]
+}
