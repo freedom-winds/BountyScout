@@ -1,0 +1,17 @@
+diff --git a/__pycache__/scout_bounties.cpython-312.pyc b/__pycache__/scout_bounties.cpython-312.pyc
+new file mode 100644
+index 0000000..d15795e
+Binary files /dev/null and b/__pycache__/scout_bounties.cpython-312.pyc differ
+diff --git a/scout_bounties.py b/scout_bounties.py
+index 35add25..f5378f6 100644
+--- a/scout_bounties.py
++++ b/scout_bounties.py
+@@ -187,7 +187,7 @@ def main():
+     # 1. Telegram / Discord Message Format (Markdown)
+     notif_lines = [
+         f"🎯 *New Bounty Alert* ({now_str})",
+-        f"Found {len(new_bounties)} new opportunity{'ies' if len(new_bounties) > 1 else ''}:\n"
++        f"Found {len(new_bounties)} new {'opportunities' if len(new_bounties) > 1 else 'opportunity'}:\n"
+     ]
+     for idx, b in enumerate(new_bounties, start=1):
+         notif_lines.append(f"{idx}. *{b['title']}*")
