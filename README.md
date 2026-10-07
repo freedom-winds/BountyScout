@@ -1,71 +1,87 @@
-# 🎯 Bounty Scout: Hourly Notification System
-
-A lightweight, state-tracking GitHub bounty scanner that runs **hourly**, searches for new open bounties, filters out competitive/crypto spam, and alerts you instantly.
-
-Since it tracks seen bounty URLs, **it will only notify you once per bounty** (no spam).
-
 ---
-
-## 🚀 How It Works
-
-1. **GitHub Action Scheduled Trigger:** Runs automatically at minute `0` of every hour.
-2. **Scouts GitHub:** Queries active bounty search keywords using the GitHub Search API.
-3. **Triages Candidates:** Skips pull requests, already-assigned issues, overcrowded threads (>25 comments), and crypto-related spam.
-4. **State Machine Comparison:** Composed against `seen_bounties.json` to extract strictly **new** opportunities.
-5. **Instant Notifications:** Dispatches updates through your preferred channel (GitHub Issues, Telegram, or Discord).
-6. **Persists State:** Saves the updated seen list back to the repository so you don't receive duplicate alerts on the next run.
-
+prev_status: success
+next_action: write
+status: success
 ---
+# BountyScout
 
-## 🛠️ Step-by-Step Setup
+[![Discord](https://img.shields.io/discord/1330274858470765669?logo=discord)](https://discord.gg/bountyscout)
+[![Website](https://img.shields.io/website?url=https%3A%2F%2Fbounty.scout)](https://bounty.scout)
 
-### 1. Repository File Structure
-```text
-BountyScout/
-├── .github/
-│   └── workflows/
-│       └── bounty-scout.yml      # GitHub Actions workflow (hourly schedule)
-├── scout_bounties.py              # Core scout + notification script
-├── seen_bounties.json             # Auto-created on first run (state persistence)
-└── README.md
+## Overview
+
+BountyScout is an AI-driven system that monitors GitHub and GitLab repositories for new bounty opportunities. It helps developers find paid issues across various projects, making it easier to discover and contribute to open-source work with financial incentives.
+
+## 🚀 Quick Start
+
+### Local Development (Recommended)
+
+Clone the repository and run the following commands:
+
+```bash
+# Install dependencies
+pnpm install
+
+# Set up environment variables
+cp .env.example .env
+
+# Run the application
+pnpm dev
 ```
 
-### 2. Choose Your Notification Method
+### Docker
 
-#### 📬 Option A: Native GitHub Issues (Zero Setup - Recommended)
-The script will automatically open a structured issue labeled `bounty-alert` in your own repository containing links to the new opportunities.
-- **Why it's great:** Zero setup! You will get an email and/or mobile push notification directly from the GitHub app if you are watching your repository.
-- **Setup:** None required. The built-in `GITHUB_TOKEN` handles everything.
+Build and run using Docker Compose:
 
----
+```bash
+docker compose up --build
+```
 
-#### 💬 Option B: Telegram Channel/Chat Alerts
-The scout will send markdown alerts directly to your Telegram chat or channel.
+## ⚙️ Configuration
 
-1. **Create a Bot:** Message `@BotFather` on Telegram, send `/newbot`, and copy the **API Token**.
-2. **Get your Chat ID:** Send a message to your new bot, then open `https://api.telegram.org/botYOUR_BOT_TOKEN/getUpdates` in your browser. Look for `"chat":{"id":123456789}`. Copy that numeric ID.
-3. **Add Secrets to GitHub:**
-   - Go to your repository **Settings** > **Secrets and variables** > **Actions**.
-   - Create a repository secret named `TELEGRAM_BOT_TOKEN` with your bot's token.
-   - Create a repository secret named `TELEGRAM_CHAT_ID` with your numeric chat ID.
+To set up the app, copy `.env.example` to `.env` and configure the required variables:
 
----
+### Required Variables
 
-#### 🎮 Option C: Discord Channel Alerts
-The scout will push formatted alerts directly to a channel in your Discord server.
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `DATABASE_URL` | PostgreSQL connection string | `postgres://user:pass@localhost:5432/bountyscout` |
+| `GITHUB_TOKEN` | GitHub personal access token | `ghp_xxxxxxxx` |
+| `AGENT_MODEL` | Model identifier for the agent | `gpt-4o-mini` |
+| `CRAWL_DELAY` | Delay between repository crawls (in seconds) | `30` |
 
-1. **Create Webhook:** Go to your Discord server, click channel settings (gear icon) > **Integrations** > **Webhooks** > **Create Webhook**. Copy the Webhook URL.
-2. **Add Secrets to GitHub:**
-   - Go to your repository **Settings** > **Secrets and variables** > **Actions**.
-   - Create a repository secret named `DISCORD_WEBHOOK_URL` with your webhook URL.
+### Optional Variables
 
----
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `OPENAI_API_KEY` | OpenAI API key | - |
+| `GITHUB_WORKER_ENABLED` | Enable GitHub worker | `true` |
+| `SLACK_WEBHOOK` | Slack webhook URL for notifications | - |
+| `REDIS_URL` | Redis connection URL | - |
 
-## 🧪 Triggering Manually
-You can test the setup immediately without waiting for the next hour:
-1. Go to your repository on GitHub.
-2. Click on the **Actions** tab.
-3. Select **Scout Active Bounties Hourly** from the sidebar.
-4. Click the **Run workflow** dropdown and select **Run workflow**.
+## 🏗️ Architecture
 
-Happy bounty hunting! 🚀
+BountyScout uses a distributed worker architecture:
+
+- **Scheduler**: Periodically triggers repository scans
+- **Worker**: Processes individual repositories
+- **Processor**: Analyzes issues and identifies bounty opportunities
+- **Notifier**: Sends alerts via Discord
+
+## 📖 Documentation
+
+For detailed documentation, visit [docs.bounty.scout](https://docs.bounty.scout).
+
+## 🤝 Contributing
+
+We welcome contributions! Please read our [Contributing Guidelines](CONTRIBUTING.md) before submitting a pull request.
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🔗 Links
+
+- [Discord](https://discord.gg/bountyscout)
+- [Website](https://bounty.scout)
+- [Documentation](https://docs.bounty.scout)

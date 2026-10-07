@@ -1,0 +1,45 @@
+{
+  "name": "bounty-scout",
+  "version": "1.0.0",
+  "description": "AI-driven system that monitors GitHub and GitLab repositories for new bounty opportunities",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "bounty-scout": "dist/index.js"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "lint": "eslint src --ext .ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "scan:bounties": "tsx src/commands/scan.ts",
+    "create-alert": "tsx src/commands/create-alert.ts"
+  },
+  "keywords": [
+    "bounty",
+    "github",
+    "gitlab",
+    "ai",
+    "open-source"
+  ],
+  "author": "BountyScout",
+  "license": "MIT",
+  "dependencies": {
+    "@langchain/langgraph": "^0.2.0",
+    "@langchain/openai": "^0.3.0",
+    "pg": "^8.13.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/pg": "^8.11.0",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "eslint": "^9.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  }
+}
