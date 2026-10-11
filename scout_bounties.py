@@ -174,6 +174,11 @@ def main():
                         "updated_at": item.get("updated_at")
                     })
                     seen_urls.add(url)
+                    # Limit to 10 new bounties per run to avoid overly large payloads/notifications
+                    if len(new_bounties) >= 10:
+                        break
+        if len(new_bounties) >= 10:
+            break
 
     if not new_bounties:
         print("No new bounty opportunities found.")
