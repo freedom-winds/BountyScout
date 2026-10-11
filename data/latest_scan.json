@@ -1,0 +1,15 @@
+{
+  "scan_time": "2026-10-11T21:29:00Z",
+  "bounties": [
+    {"id": 4000, "repo": "XRPLF/xrpl-dev-portal", "title": "Harden auto-sign amount cap"},
+    {"id": 3, "repo": "ahmedelgaml70/protocol", "title": "Discover additional small-capital rewards"},
+    {"id": 438, "repo": "btseytlin/road-machiners", "title": "Release 2026-10-11"},
+    {"id": 12, "repo": "Katiczek/Grodowladcy", "title": "Pin a coin bounty on the tavern door"},
+    {"id": 301, "repo": "nibbstack/erc721", "title": "Bug Bounty Report: remaining typos"},
+    {"id": 129, "repo": "useagenthq/useagent", "title": "Add a contributor wall"},
+    {"id": 1277, "repo": "relayhop/sn-monetization-runtime", "title": "SN open bounty"},
+    {"id": 128, "repo": "useagenthq/useagent", "title": "Built with UseAgent badge"},
+    {"id": 53, "repo": "SUSU-LABS/susu-web", "title": "Bound the response body read"},
+    {"id": 42, "repo": "SUSU-LABS/susu-indexer", "title": "Do not treat in-flight pg_cron runs as failures"}
+  ]
+}
