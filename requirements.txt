@@ -1,0 +1,3 @@
+# Existing requirements (if any) – add the minimal dependencies needed for the
+# bounty‑alert script.
+requests>=2.31.0

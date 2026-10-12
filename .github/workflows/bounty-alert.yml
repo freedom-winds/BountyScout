@@ -1,0 +1,39 @@
+name: Bounty Alert Scheduler
+
+# This workflow runs daily and creates/updates a GitHub issue with the latest
+# active bounty scan results. It uses the `scripts/generate_bounty_alert.py`
+# helper script defined in the repository.
+
+on:
+  schedule:
+    # Run at 02:00 UTC every day
+    - cron: '0 2 * * *'
+  workflow_dispatch:   # Allows manual triggering
+
+jobs:
+  generate-alert:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write   # Needed to create / comment on issues
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run bounty alert generator
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BOUNTY_API_URL: ${{ vars.BOUNTY_API_URL }}
+          MAX_BOUNTIES: ${{ vars.MAX_BOUNTIES }}
+        run: |
+          python scripts/generate_bounty_alert.py
