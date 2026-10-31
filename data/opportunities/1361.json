@@ -1,0 +1,42 @@
+{
+  "issue": 1361,
+  "title": "Bounty Alert: 10 New Opportunities found",
+  "scan_time": "2026-10-31T18:09:00Z",
+  "opportunities": [
+    {
+      "title": "Show quest stock even when normal shop categories are disabled",
+      "repository": "TraiNguyenVan/EconomyCraft",
+      "url": "https://github.com/TraiNguyenVan/EconomyCraft/issues/108",
+      "comments": 0,
+      "last_updated": "2026-10-31T18:09:45Z"
+    },
+    {
+      "title": "label_studio_converter-0.0.57-py3-none-any.whl: 8 vulnerabilities (highest severity is: 10.0)",
+      "repository": "amaybaum-staging/label-studio",
+      "url": "https://github.com/amaybaum-staging/label-studio/issues/6",
+      "comments": 0,
+      "last_updated": "2026-10-31T18:08:40Z"
+    },
+    {
+      "title": "[Hosted two-author sandbox] Validate supported form values",
+      "repository": "deepakA18/gitpay-demo-http",
+      "url": "https://github.com/deepakA18/gitpay-demo-http/issues/11",
+      "comments": 2,
+      "last_updated": "2026-10-31T18:05:12Z"
+    },
+    {
+      "title": "Retroactive Grant Application - Critical Zebra Block Discovery DoS (CVE-2026-44499)",
+      "repository": "Financial-Privacy-Foundation/ZcashCoinholderGrantsProgram",
+      "url": "https://github.com/Financial-Privacy-Foundation/ZcashCoinholderGrantsProgram/issues/71",
+      "comments": 0,
+      "last_updated": "2026-10-31T18:01:09Z"
+    },
+    {
+      "title": "[ Bounty $7k ] [ API ] Add health check endpoint with component status",
+      "repository": "ClankerNation/OpenAgents",
+      "url": "https://github.com/ClankerNation/OpenAgents/issues/41",
+      "comments": 0,
+      "last_updated": "2026-10-31T18:09:00Z"
+    }
+  ]
+}
