@@ -1,0 +1,59 @@
+name: Close Old Scan Issues
+
+on:
+  schedule:
+    - cron: '0 0 * * 0'
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Close old scan issues
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          node << 'EOF'
+          const { Octokit } = require('@octokit/rest');
+          const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
+          
+          const [owner, repo] = process.env.GITHUB_REPOSITORY.split('/');
+          const cutoffDate = new Date(Date.now() - 14*24*60*60*1000);
+          
+          async function closeOldIssues() {
+            const { data: issues } = await octokit.issues.listForRepo({
+              owner,
+              repo,
+              labels: 'bounty-scan',
+              state: 'open',
+              per_page: 100
+            });
+            
+            for (const issue of issues) {
+              if (new Date(issue.created_at) < cutoffDate) {
+                await octokit.issues.update({
+                  owner,
+                  repo,
+                  issue_number: issue.number,
+                  state: 'closed'
+                });
+                
+                await octokit.issues.createComment({
+                  owner,
+                  repo,
+                  issue_number: issue.number,
+                  body: 'Closing old scan results. Check recent issues for current opportunities.'
+                });
+                
+                console.log(`Closed issue #${issue.number}`);
+              }
+            }
+          }
+          
+          closeOldIssues().catch(error => {
+            console.error('Error:', error);
+            process.exit(1);
+          });
+          EOF
