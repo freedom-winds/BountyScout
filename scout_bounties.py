@@ -183,11 +183,15 @@ def main():
 
     # Format notification message
     now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-    
+
+    # Correct singular/plural form of "opportunity" (naive "opportunity" + "ies"
+    # produced "opportunityies"). Use the stem "opportunit" + suffix instead.
+    opportunity_word = "opportunities" if len(new_bounties) != 1 else "opportunity"
+
     # 1. Telegram / Discord Message Format (Markdown)
     notif_lines = [
         f"🎯 *New Bounty Alert* ({now_str})",
-        f"Found {len(new_bounties)} new opportunity{'ies' if len(new_bounties) > 1 else ''}:\n"
+        f"Found {len(new_bounties)} new {opportunity_word}:\n"
     ]
     for idx, b in enumerate(new_bounties, start=1):
         notif_lines.append(f"{idx}. *{b['title']}*")
@@ -211,7 +215,10 @@ def main():
 
     # Method C: GitHub Issue (Built-in, zero configuration)
     if github_token and repo_fullname:
-        issue_title = f"🎯 Bounty Alert: {len(new_bounties)} New Opportunity{'ies' if len(new_bounties) > 1 else ''} found"
+        issue_title = (
+            f"🎯 Bounty Alert: {len(new_bounties)} New "
+            f"{opportunity_word.capitalize()} found"
+        )
         issue_body = (
             f"### Active Bounty Scan Results\n\n"
             f"**Scan Time:** {now_str}\n\n"
