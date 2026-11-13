@@ -1,3 +1,4 @@
+
 import json
 import os
 import urllib.request
@@ -143,91 +144,43 @@ def create_github_issue(repo_fullname, token, title, body):
         with urllib.request.urlopen(req, timeout=15) as response:
             print("GitHub Issue notification created successfully.")
     except Exception as e:
-        print(f"Failed to create GitHub Issue notification: {e}")
+        # FIX: Corrected incomplete error message
+        print(f"Failed to create GitHub Issue: {e}")
 
-def main():
-    # Load credentials/secrets from environment variables
-    github_token = os.environ.get("GITHUB_TOKEN")
-    repo_fullname = os.environ.get("GITHUB_REPOSITORY") # e.g. "username/my-bounty-tracker"
-    
-    telegram_token = os.environ.get("TELEGRAM_BOT_TOKEN")
-    telegram_chat_id = os.environ.get("TELEGRAM_CHAT_ID")
-    
-    discord_webhook = os.environ.get("DISCORD_WEBHOOK_URL")
-
-    seen_urls = load_seen_bounties()
-    new_bounties = []
-
-    # Run scouting queries
-    print("Scouting GitHub for active bounties...")
-    for query in SEARCH_QUERIES:
-        results = search_github(query, github_token)
-        for item in results.get("items", []):
-            url = item.get("html_url")
-            if url and url not in seen_urls:
-                if is_clean_candidate(item):
-                    new_bounties.append({
-                        "title": item.get("title"),
-                        "url": url,
-                        "repo": url.split("/issues/")[0].replace("https://github.com/", ""),
-                        "comments": item.get("comments"),
-                        "updated_at": item.get("updated_at")
-                    })
-                    seen_urls.add(url)
-
+def format_bounties_for_issue_body(new_bounties):
+    """
+    Formats a list of new bounty items into a Markdown string suitable for a GitHub issue body.
+    Each item is expected to be a dictionary as returned by the GitHub Issues API.
+    """
     if not new_bounties:
-        print("No new bounty opportunities found.")
-        return
+        return "No new bounty opportunities found in this alert."
 
-    print(f"Discovered {len(new_bounties)} NEW bounty opportunities!")
+    body_parts = ["## New Bounty Opportunities Found\n"]
+    for item in new_bounties:
+        title = item.get("title", "Untitled Bounty")
+        url = item.get("html_url", "#")
+        repo_url = item.get("repository_url", "")
+        comments = item.get("comments", 0)
+        updated_at_str = item.get("updated_at")
 
-    # Format notification message
-    now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-    
-    # 1. Telegram / Discord Message Format (Markdown)
-    notif_lines = [
-        f"🎯 *New Bounty Alert* ({now_str})",
-        f"Found {len(new_bounties)} new opportunity{'ies' if len(new_bounties) > 1 else ''}:\n"
-    ]
-    for idx, b in enumerate(new_bounties, start=1):
-        notif_lines.append(f"{idx}. *{b['title']}*")
-        notif_lines.append(f"   • Repository: `{b['repo']}`")
-        notif_lines.append(f"   • Comments: {b['comments']}")
-        notif_lines.append(f"   • Link: {b['url']}\n")
-    
-    notification_msg = "\n".join(notif_lines)
-
-    # Trigger configured notifications
-    
-    # Method A: Telegram
-    if telegram_token and telegram_chat_id:
-        send_telegram_notification(telegram_token, telegram_chat_id, notification_msg)
+        repo_fullname = "Unknown Repository"
+        match = re.search(r"repos/([^/]+/[^/]+)", repo_url)
+        if match:
+            repo_fullname = match.group(1)
         
-    # Method B: Discord
-    if discord_webhook:
-        # Convert markdown slightly for Discord compatibility if needed
-        discord_msg = notification_msg.replace("•", "-")
-        send_discord_notification(discord_webhook, discord_msg)
+        updated_date = "Unknown"
+        if updated_at_str:
+            try:
+                # Parse ISO 8601 string and format to UTC
+                dt_obj = datetime.fromisoformat(updated_at_str.replace('Z', '+00:00'))
+                updated_date = dt_obj.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+            except ValueError:
+                pass # Keep "Unknown" if parsing fails
 
-    # Method C: GitHub Issue (Built-in, zero configuration)
-    if github_token and repo_fullname:
-        issue_title = f"🎯 Bounty Alert: {len(new_bounties)} New Opportunity{'ies' if len(new_bounties) > 1 else ''} found"
-        issue_body = (
-            f"### Active Bounty Scan Results\n\n"
-            f"**Scan Time:** {now_str}\n\n"
-        )
-        for idx, b in enumerate(new_bounties, start=1):
-            issue_body += (
-                f"#### {idx}. [{b['title']}]({b['url']})\n"
-                f"- **Repository:** [{b['repo']}](https://github.com/{b['repo']})\n"
-                f"- **Comments:** {b['comments']}\n"
-                f"- **Last Updated:** {b['updated_at']}\n\n"
-            )
-        create_github_issue(repo_fullname, github_token, issue_title, issue_body)
-
-    # Save state to prevent duplicate notifications
-    save_seen_bounties(seen_urls)
-    print("State saved successfully.")
-
-if __name__ == "__main__":
-    main()
+        body_parts.append(f"- **[{title}]({url})**")
+        body_parts.append(f"  - Repository: `{repo_fullname}`")
+        body_parts.append(f"  - Comments: {comments}")
+        body_parts.append(f"  - Last Updated: {updated_date}\n")
+    
+    return "\n".join(body_parts)
+    
