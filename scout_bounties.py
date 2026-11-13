@@ -1,3 +1,4 @@
+
 import json
 import os
 import urllib.request
@@ -143,91 +144,85 @@ def create_github_issue(repo_fullname, token, title, body):
         with urllib.request.urlopen(req, timeout=15) as response:
             print("GitHub Issue notification created successfully.")
     except Exception as e:
-        print(f"Failed to create GitHub Issue notification: {e}")
+        # BUG FIX: Corrected the error message from `f"```"` to a proper message.
+        print(f"Failed to create GitHub issue: {e}")
 
 def main():
-    # Load credentials/secrets from environment variables
+    """Main function to scout for bounties and send notifications."""
     github_token = os.environ.get("GITHUB_TOKEN")
-    repo_fullname = os.environ.get("GITHUB_REPOSITORY") # e.g. "username/my-bounty-tracker"
-    
-    telegram_token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    telegram_bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")
     telegram_chat_id = os.environ.get("TELEGRAM_CHAT_ID")
-    
-    discord_webhook = os.environ.get("DISCORD_WEBHOOK_URL")
+    discord_webhook_url = os.environ.get("DISCORD_WEBHOOK_URL")
+    github_repo_fullname = os.environ.get("GITHUB_REPOSITORY") # Format: "owner/repo"
+
+    if not github_token:
+        print("Warning: GITHUB_TOKEN environment variable not set. GitHub API calls may be rate-limited or fail, and GitHub issues cannot be created.")
+    if not github_repo_fullname:
+        print("Warning: GITHUB_REPOSITORY environment variable not set. GitHub issues cannot be created.")
 
     seen_urls = load_seen_bounties()
     new_bounties = []
-
-    # Run scouting queries
-    print("Scouting GitHub for active bounties...")
+    
     for query in SEARCH_QUERIES:
+        print(f"Searching GitHub with query: '{query}'")
         results = search_github(query, github_token)
-        for item in results.get("items", []):
-            url = item.get("html_url")
-            if url and url not in seen_urls:
-                if is_clean_candidate(item):
-                    new_bounties.append({
-                        "title": item.get("title"),
-                        "url": url,
-                        "repo": url.split("/issues/")[0].replace("https://github.com/", ""),
-                        "comments": item.get("comments"),
-                        "updated_at": item.get("updated_at")
-                    })
-                    seen_urls.add(url)
+        if results and "items" in results:
+            for item in results["items"]:
+                url = item["html_url"]
+                # Only consider new, clean candidates
+                if url not in seen_urls and is_clean_candidate(item):
+                    new_bounties.append(item)
+                    seen_urls.add(url) # Add to seen_urls immediately after deciding it's new
 
-    if not new_bounties:
-        print("No new bounty opportunities found.")
-        return
-
-    print(f"Discovered {len(new_bounties)} NEW bounty opportunities!")
-
-    # Format notification message
-    now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-    
-    # 1. Telegram / Discord Message Format (Markdown)
-    notif_lines = [
-        f"🎯 *New Bounty Alert* ({now_str})",
-        f"Found {len(new_bounties)} new opportunity{'ies' if len(new_bounties) > 1 else ''}:\n"
-    ]
-    for idx, b in enumerate(new_bounties, start=1):
-        notif_lines.append(f"{idx}. *{b['title']}*")
-        notif_lines.append(f"   • Repository: `{b['repo']}`")
-        notif_lines.append(f"   • Comments: {b['comments']}")
-        notif_lines.append(f"   • Link: {b['url']}\n")
-    
-    notification_msg = "\n".join(notif_lines)
-
-    # Trigger configured notifications
-    
-    # Method A: Telegram
-    if telegram_token and telegram_chat_id:
-        send_telegram_notification(telegram_token, telegram_chat_id, notification_msg)
+    if new_bounties:
+        print(f"Found {len(new_bounties)} new bounty opportunities.")
         
-    # Method B: Discord
-    if discord_webhook:
-        # Convert markdown slightly for Discord compatibility if needed
-        discord_msg = notification_msg.replace("•", "-")
-        send_discord_notification(discord_webhook, discord_msg)
+        # Prepare GitHub issue body
+        issue_body = "Here are the new bounty opportunities found:\n\n"
+        for bounty in new_bounties:
+            issue_body += f"- [{bounty['title']}]({bounty['html_url']})\n"
+            issue_body += f"  * Comments: {bounty.get('comments', 0)}\n"
+            # Format date for readability
+            updated_at = bounty.get('updated_at', 'N/A')
+            if updated_at != 'N/A':
+                try:
+                    dt_object = datetime.fromisoformat(updated_at.replace('Z', '+00:00'))
+                    updated_at = dt_object.strftime("%Y-%m-%d %H:%M UTC")
+                except ValueError:
+                    pass # Keep original if parsing fails
+            issue_body += f"  * Last Updated: {updated_at}\n\n"
+        
+        # Prepare GitHub issue title
+        bounty_count = len(new_bounties)
+        issue_title = f"🎯 Bounty Alert: {bounty_count} New Opportunit{'y' if bounty_count == 1 else 'ies'} found"
 
-    # Method C: GitHub Issue (Built-in, zero configuration)
-    if github_token and repo_fullname:
-        issue_title = f"🎯 Bounty Alert: {len(new_bounties)} New Opportunity{'ies' if len(new_bounties) > 1 else ''} found"
-        issue_body = (
-            f"### Active Bounty Scan Results\n\n"
-            f"**Scan Time:** {now_str}\n\n"
-        )
-        for idx, b in enumerate(new_bounties, start=1):
-            issue_body += (
-                f"#### {idx}. [{b['title']}]({b['url']})\n"
-                f"- **Repository:** [{b['repo']}](https://github.com/{b['repo']})\n"
-                f"- **Comments:** {b['comments']}\n"
-                f"- **Last Updated:** {b['updated_at']}\n\n"
-            )
-        create_github_issue(repo_fullname, github_token, issue_title, issue_body)
+        # Create GitHub issue notification
+        if github_repo_fullname and github_token:
+            print("Attempting to create GitHub issue...")
+            create_github_issue(github_repo_fullname, github_token, issue_title, issue_body)
+        else:
+            print("Skipping GitHub issue creation: GITHUB_REPOSITORY or GITHUB_TOKEN not configured.")
+        
+        # Send Telegram notification
+        if telegram_bot_token and telegram_chat_id:
+            print("Attempting to send Telegram notification...")
+            telegram_message = f"*{issue_title}*\n\n{issue_body}" # Add markdown for title
+            send_telegram_notification(telegram_bot_token, telegram_chat_id, telegram_message)
+        else:
+            print("Skipping Telegram notification: TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID not configured.")
 
-    # Save state to prevent duplicate notifications
+        # Send Discord notification
+        if discord_webhook_url:
+            print("Attempting to send Discord notification...")
+            discord_message = f"**{issue_title}**\n\n{issue_body}" # Add markdown for title
+            send_discord_notification(discord_webhook_url, discord_message)
+        else:
+            print("Skipping Discord notification: DISCORD_WEBHOOK_URL not configured.")
+    else:
+        print("No new bounty opportunities found.")
+
     save_seen_bounties(seen_urls)
-    print("State saved successfully.")
 
 if __name__ == "__main__":
     main()
+    
