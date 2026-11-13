@@ -1,0 +1,35 @@
+{
+  "name": "bountyscout",
+  "version": "1.0.1",
+  "description": "Automated bounty opportunity detection and notification system",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint src tests",
+    "start": "node src/index.js"
+  },
+  "keywords": [
+    "bounty",
+    "scout",
+    "notifications",
+    "opportunities"
+  ],
+  "author": "freedom-winds",
+  "license": "MIT",
+  "devDependencies": {
+    "jest": "^29.0.0",
+    "eslint": "^8.0.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "coverageDirectory": "coverage",
+    "collectCoverageFrom": [
+      "src/**/*.js"
+    ],
+    "testMatch": [
+      "**/tests/**/*.test.js"
+    ]
+  }
+}
