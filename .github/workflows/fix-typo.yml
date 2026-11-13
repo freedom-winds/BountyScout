@@ -1,0 +1,36 @@
+name: Fix Typo in Issue Title
+
+on:
+  issues:
+    types: [opened, edited]
+
+jobs:
+  fix-typo:
+    runs-on: ubuntu-latest
+    if: contains(github.event.issue.title, 'Opportunityies')
+    permissions:
+      issues: write
+    steps:
+      - name: Fix typo in title
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue_number = context.issue.number;
+            const current_title = context.payload.issue.title;
+            const fixed_title = current_title.replace(/Opportunityies/g, 'Opportunities');
+            
+            if (current_title !== fixed_title) {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue_number,
+                title: fixed_title
+              });
+              
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue_number,
+                body: '✅ Fixed typo in title: "Opportunityies" → "Opportunities"'
+              });
+            }
